@@ -462,6 +462,7 @@
 			runs[data.id].error = 0;
 			runs[data.id].num = 0;
 			runs[data.id].name = (data.useragent.match(/(MSIE [\d.]+)/) ||
+				data.useragent.match(/(Edge\/[\w.]+)/) ||
 				data.useragent.match(/((?:WebKit|Firefox|Shiretoko|Opera)\/[\w.]+)/) || [0,data.id])[1];
 
 			for ( var i = 0; i < data.results.length; i++ ) {
