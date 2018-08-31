@@ -54,7 +54,7 @@ if ( isset($_REQUEST['id']) ) {
 			mysqli_real_escape_string($sql, $i)));
 		$data = mysqli_fetch_assoc($query);
 
-		$query = mysqli_query( $sql, sprintf("SELECT * FROM results WHERE run_id=%s;",
+		$query = mysqli_query( $sql, sprintf("SELECT * FROM results WHERE run_id=%s ORDER BY id ASC;",
 			mysqli_real_escape_string($sql, $i)));
 		$results = array();
 	
