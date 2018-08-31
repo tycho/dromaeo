@@ -467,6 +467,7 @@
 			} else {
 				runs[data.id].name = (
 					data.useragent.match(/(Edge\/[\w.]+)/) ||
+					data.useragent.match(/(Chrome\/[\w.]+)/) ||
 					data.useragent.match(/((?:WebKit|Firefox|Shiretoko|Opera)\/[\w.]+)/) || [0,data.id])[1];
 			}
 
