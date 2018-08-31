@@ -32,26 +32,33 @@ $pass = 'dromaeo';
 require('JSON.php');
 
 $json = new Services_JSON();
-$sql = mysql_connect( $server, $user, $pass );
+$sql = mysqli_connect( $server, $user, $pass );
+if (!$sql) {
+	http_response_code(503);
+	die("Failed to connect to database server.");
+}
 
-mysql_select_db( 'dromaeo' );
+if (!mysqli_select_db($sql, 'dromaeo')) {
+	http_response_code(503);
+	die("Failed to select database.");
+}
 
-$id = preg_replace('/[^\d,]/', '', $_REQUEST['id']);
 
-if ( $id ) {
+if ( isset($_REQUEST['id']) ) {
+	$id = preg_replace('/[^\d,]/', '', $_REQUEST['id']);
 	$sets = array();
-	$ids = split(",", $id);
+	$ids = explode(",", $id);
 
 	foreach ($ids as $i) {
-		$query = mysql_query( sprintf("SELECT * FROM runs WHERE id=%s;",
-			mysql_real_escape_string($i)));
-		$data = mysql_fetch_assoc($query);
+		$query = mysqli_query( $sql, sprintf("SELECT * FROM runs WHERE id=%s;",
+			mysqli_real_escape_string($sql, $i)));
+		$data = mysqli_fetch_assoc($query);
 
-		$query = mysql_query( sprintf("SELECT * FROM results WHERE run_id=%s;",
-			mysql_real_escape_string($i)));
+		$query = mysqli_query( $sql, sprintf("SELECT * FROM results WHERE run_id=%s;",
+			mysqli_real_escape_string($sql, $i)));
 		$results = array();
 	
-		while ( $row = mysql_fetch_assoc($query) ) {
+		while ( $row = mysqli_fetch_assoc($query) ) {
 			array_push($results, $row);
 		}
 
@@ -62,27 +69,44 @@ if ( $id ) {
 	}
 
 	echo $json->encode($sets);
-} else {
+} else if ( isset($_REQUEST['data']) ){
 	$data = $json->decode(str_replace('\\"', '"', $_REQUEST['data']));
 
 	if ( $data ) {
-		mysql_query( sprintf("INSERT into runs VALUES(NULL,'%s','%s',NOW(),'%s');",
-			mysql_real_escape_string($_SERVER['HTTP_USER_AGENT']),
-			mysql_real_escape_string($_SERVER['REMOTE_ADDR']),
-			mysql_real_escape_string(str_replace(';', "", $_REQUEST['style']))
+		mysqli_query( $sql, sprintf("INSERT into runs VALUES(NULL,'%s','%s',NOW(),'%s');",
+			mysqli_real_escape_string($sql, $_SERVER['HTTP_USER_AGENT']),
+			mysqli_real_escape_string($sql, $_SERVER['REMOTE_ADDR']),
+			mysqli_real_escape_string($sql, str_replace(';', "", $_REQUEST['style']))
 		));
 
-		$id = mysql_insert_id();
+		$id = mysqli_insert_id($sql);
 
 		if ( $id ) {
 
+			$stmt = mysqli_prepare($sql, "INSERT INTO results VALUES(NULL,?,?,?,?,?,?,?,?,?,?,?)");
+
 			foreach ($data as $row) {
-				mysql_query( sprintf("INSERT into results VALUES(NULL,'%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s');",
-					$id, $row->collection, $row->version, $row->name, $row->scale, $row->median, $row->min, $row->max, $row->mean, $row->deviation, $row->runs) );
+				mysqli_stmt_bind_param($stmt, "isssidddddi",
+							$id,
+							$row->collection,
+							$row->version,
+							$row->name,
+							$row->scale,
+							$row->median,
+							$row->min,
+							$row->max,
+							$row->mean,
+							$row->deviation,
+							$row->runs);
+				mysqli_stmt_execute($stmt);
 			}
+
+			mysqli_stmt_close($stmt);
 
 			echo $id;
 		}
 	}
 }
+
+mysqli_close($sql);
 ?>

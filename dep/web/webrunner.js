@@ -386,6 +386,9 @@
 					success: function(id){
 						var url = window.location.href.replace(/\?.*$/, "") + "?id=" + id;
 						div.html("Results saved. You can access them at a later time at the following URL:<br/><strong><a href='" + url + "'>" + url + "</a></strong></div>");
+					},
+					error: function(xhr, textStatus, errorThrown){
+						div.html("Could not save results. " + xhr.responseText);
 					}
 				});
 			}
