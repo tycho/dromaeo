@@ -1,6 +1,7 @@
 RUNNER = dep/run/runner.js
-TESTS = tests/*.js
-HTMLTESTS = tests/*.html
+TESTS := $(wildcard tests/*.js)
+HTMLTESTS := $(wildcard tests/*.html)
+WEB_TESTS := $(addprefix web/,$(TESTS)) $(addprefix web/,$(HTMLTESTS))
 RESULTS = results
 PERF = perf
 WEB = web
@@ -21,24 +22,24 @@ talos: web
 		echo "% $${TEST}.html" >> talos/dromaeo.manifest; \
 	done
 
-web: ${TESTS}
-	@@ rm -rf ${WEB}
-	@@ cp -fR dep/web ${WEB}
-	@@ mkdir ${WEB}/tests
-	@@ cp -f tests/MANIFEST.json ${WEB}/tests/MANIFEST.json
-	@@ for i in ${TESTS}; do \
-		echo "Converting $${i} to web test..."; \
-		cat dep/web/test-head.html "$${i}" dep/web/test-tail.html | \
-			sed "s/startTest.\(.*\).;/startTest\(\1, '`crc32 $${i}`'\);/" | \
-			sed "s/startTest/window.onload = function(){ startTest/" | \
-			sed "s/endTest..;/endTest(); };/" > \
-			${WEB}/`echo "$${i}"|sed s/.js//`.html; \
-	done
-	@@ for i in ${HTMLTESTS}; do \
-		echo "Converting $${i} to web test..."; \
-		cat "$${i}" | \
-			sed "s/startTest.\(.*\).;/startTest\(\1, '`crc32 "$${i}"`'\);/" > ${WEB}"/$${i}"; \
-	done
+$(WEB)/tests/%.js: tests/%.js
+	@mkdir -p $(dir $@)
+	@echo Converting $< to $@ web test...
+	@cat dep/web/test-head.html $< dep/web/test-tail.html | \
+		sed "s/startTest.\(.*\).;/startTest\(\1, '`crc32 "$<"`'\);/" | \
+		sed "s/startTest/window.onload = function(){ startTest/" | \
+		sed "s/endTest..;/endTest(); };/" > \
+		$(@:.js=.html)
+	@touch $@
+
+$(WEB)/tests/%.html: tests/%.html
+	@mkdir -p $(dir $@)
+	@echo Converting $< to $@ web test...
+	@cat $< | sed "s/startTest.\(.*\).;/startTest\(\1, '`crc32 "$<"`'\);/" > $@
+
+web: $(WEB_TESTS)
+	@@ cp -fR dep/web/. $(WEB)/.
+	@@ cp -f tests/MANIFEST.json $(WEB)/tests/MANIFEST.json
 
 perf: ${TESTS}
 	@@ mkdir -p ${PERF}
@@ -57,7 +58,7 @@ perf-single: ${TESTS}
 
 results: ${TESTS}
 	@@ mkdir -p ${RESULTS}
-	@@ cp -f dep/results/* ${RESULTS}/
+	@@ cp -Rf dep/results/* ${RESULTS}/
 	@@ mkdir -p ${RESULTS}/spidermonkey
 	@@ mkdir -p ${RESULTS}/spidermonkey-patch
 	@@ mkdir -p ${RESULTS}/rhino
@@ -107,3 +108,5 @@ clean:
 	@@ rm -rf ${PERFSINGLE}
 	@@ rm -rf ${RESULTS}
 	@@ rm -rf ${WEB}
+
+.PHONY: clean jscore tamarin rhino spidermonkey results perf-single perf web talos all
